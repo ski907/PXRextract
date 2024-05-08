@@ -250,7 +250,7 @@ def main():
     duration = 6 #storm duration, hours for selecting overall average storm intensity
     T = 100 #return period, years
 
-    Tp=12   #time to peak, hours
+    Tp=duration/2   #time to peak, hours
     total_duration = duration #storm duration, sets length of storm in output series. Usually the same as duration
     
     site_coord = [44.564624, -72.761110]    #get site coords, lat long
