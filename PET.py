@@ -8,7 +8,7 @@
 #               Cold Regions Research and Engineering Laboratory (CRREL)
 #               Chandler.S.Engel@usace.army.mil
 # Created:      31 January 2020
-# Updated:      05 February 2020
+# Updated:      08 May 2024
 #               
 #-------------------------------------------------------------------------------
 
@@ -75,31 +75,73 @@ def extract_PXR2_duration_intensities(ds,site_coord,T):
     
     return intensities
 
-def create_24_hr_alternating_block_hyetograph(intensities):
-    
-    durations = [1,2,3,4,6,8,10,12,18,24,48,72,96,120,144,192,240,288,360]
-    
-    precip = np.zeros(24)
-    
+# def create_24_hr_alternating_block_hyetograph(intensities):
+#
+#     durations = [1,2,3,4,6,8,10,12,18,24,48,72,96,120,144,192,240,288,360]
+#
+#     precip = np.zeros(24)
+#
+#     dt = np.diff(durations)
+#
+#     cum_depth = intensities*durations
+#     inc_depth_irr = np.diff(cum_depth)/dt
+#
+#     inc_depth = np.array(cum_depth[0])
+#
+#     for i,d in enumerate(dt):
+#         inc_depth = np.append(inc_depth,np.ones(d)*inc_depth_irr[i])
+#
+#     alt_block_index = [12,13,11,14,10,15,9,16,8,17,7,18,6,19,5,20,4,21,3,22,2,23,1,0]
+#
+#     for i,ind in enumerate(alt_block_index):
+#         precip[ind] = inc_depth[i]
+#     #test below
+#     precip = np.append(precip,precip[-1])
+#
+#     return precip
+
+def create_alternating_block_hyetograph(intensities, total_duration):
+    durations = [1, 2, 3, 4, 6, 8, 10, 12, 18, 24, 48, 72, 96, 120, 144, 192, 240, 288, 360]
+
+    precip = np.zeros(total_duration)
+
     dt = np.diff(durations)
-    
-    cum_depth = intensities*durations
-    inc_depth_irr = np.diff(cum_depth)/dt
-    
+
+    cum_depth = intensities * durations
+    inc_depth_irr = np.diff(cum_depth) / dt
+
     inc_depth = np.array(cum_depth[0])
-    
-    for i,d in enumerate(dt):
-        inc_depth = np.append(inc_depth,np.ones(d)*inc_depth_irr[i])
-  
-    alt_block_index = [12,13,11,14,10,15,9,16,8,17,7,18,6,19,5,20,4,21,3,22,2,23,1,0]    
-        
-    for i,ind in enumerate(alt_block_index):
+
+    for i, d in enumerate(dt):
+        inc_depth = np.append(inc_depth, np.ones(d) * inc_depth_irr[i])
+
+    alt_block_index = generate_alt_block_index(total_duration)
+
+    for i, ind in enumerate(alt_block_index):
         precip[ind] = inc_depth[i]
-    #test below
-    precip = np.append(precip,precip[-1])       
-    
+    # test below
+    precip = np.append(precip, precip[-1])
+
     return precip
-    
+
+def generate_alt_block_index(duration):
+    # Calculate the starting point
+    start_index = duration // 2
+
+    # Initialize the alt_block_index with the starting index
+    alt_block_index = [start_index]
+
+    # Alternate incrementing and decrementing
+    for i in range(1, start_index + 1):
+        # Add next higher index if within duration
+        if start_index + i < duration:
+            alt_block_index.append(start_index + i)
+
+        # Add next lower index if it's non-negative
+        if start_index - i >= 0:
+            alt_block_index.append(start_index - i)
+
+    return alt_block_index
 
 def extract_intensity_from_PXR4(ds,site_coord,duration,T):
     
@@ -201,11 +243,11 @@ def export_rainfall_toDSS(installation,Part_F,cum_rainfall_dist,dt,output_file):
     
 def main():
     
-    data_dir = r'C:\Users\RDCRLCSE\Documents\Python Scripts\PXRextract\PXR'
+    data_dir = r'C:\Users\RDCRLCSE\PythonProjects\PXRextract\data'
     
     ds_pxr2, ds_pxr4 = loadPXRdata(data_dir)
 
-    duration = 24 #storm duration, hours for selecting overall average storm intensity
+    duration = 6 #storm duration, hours for selecting overall average storm intensity
     T = 100 #return period, years
 
     Tp=12   #time to peak, hours
@@ -213,12 +255,13 @@ def main():
     
     site_coord = [44.564624, -72.761110]    #get site coords, lat long
  
-    installation = 'Freefall'
+    installation = 'FreefallTEST'
     output_file = 'Global_Precip_'+installation+"_metric.dss"
     
     ####PXR2 alternating block#######
     intensities = extract_PXR2_duration_intensities(ds_pxr2,site_coord,T)
-    precip = create_24_hr_alternating_block_hyetograph(intensities)
+    #precip = create_24_hr_alternating_block_hyetograph(intensities)
+    precip = create_alternating_block_hyetograph(intensities, duration)
     
     cum_rainfall_dist = np.cumsum(precip)
     Part_F = '100-yr PXR2'
